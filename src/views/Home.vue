@@ -5,12 +5,44 @@ import {useRouter} from 'vue-router';
 const currentTheme = ref('light');
 const isSidebarCollapsed = ref(false); // 新增侧边栏折叠状态
 const username = ref(''); // 用于存储用户名称的响应式变量
+// 存储展开的子菜单
+const expandedMenus = ref([]);
+
+// 切换子菜单展开/折叠状态
+const toggleSubmenu = (menuName) => {
+  if (expandedMenus.value.includes(menuName)) {
+    expandedMenus.value = expandedMenus.value.filter(name => name !== menuName);
+  } else {
+    expandedMenus.value.push(menuName);
+  }
+};
+
+// 检查菜单是否展开
+const isMenuExpanded = (menuName) => {
+  return expandedMenus.value.includes(menuName);
+};
 
 // 侧边栏菜单项数据
 const menuItems = [
   {name: '首页', icon: '🏠', link: '/'},
+  {
+    name: '分类管理', 
+    icon: '📁', 
+    children: [
+      {name: '添加分类', icon: '➕', link: '/categories/add'},
+      {name: '分类列表', icon: '📋', link: '/categories/list'}
+    ]
+  },
+  {
+    name: '文章管理', 
+    icon: '📝', 
+    children: [
+      {name: '发布文章', icon: '✍️', link: '/articles/create'},
+      {name: '文章列表', icon: '📚', link: '/articles/list'},
+      {name: '草稿箱', icon: '📄', link: '/articles/drafts'}
+    ]
+  },
   {name: '归档', icon: '💊', link: '/list'},
-  {name: '分类', icon: '🌐', link: '/categories'},
   {name: '关于我', icon: '👤', link: '/aboutme'},
 ];
 
@@ -73,6 +105,9 @@ onMounted(() => {
   document.documentElement.setAttribute('data-theme', savedTheme);
   // 获取用户名称
   username.value = localStorage.getItem('username') || 'Guest';
+  
+  // 默认展开文章管理菜单
+  expandedMenus.value = ['文章管理'];
 });
 
 const router = useRouter();
@@ -175,9 +210,39 @@ const logout = () => {
         <!-- 菜单项 -->
         <ul class="menu flex-1 p-2">
           <li v-for="item in menuItems" :key="item.name">
+            <!-- 有子菜单的项目 -->
+            <template v-if="item.children">
+              <div 
+                class="menu-title flex items-center cursor-pointer p-2 hover:bg-base-200 rounded-lg tooltip"
+                :class="isSidebarCollapsed ? 'tooltip-right justify-center' : ''"
+                :data-tip="isSidebarCollapsed ? item.name : ''"
+                @click="toggleSubmenu(item.name)"
+              >
+                <span class="text-xl">{{ item.icon }}</span>
+                <span v-show="!isSidebarCollapsed" class="ml-2">{{ item.name }}</span>
+                <span v-show="!isSidebarCollapsed" class="ml-auto transition-transform duration-300" :class="{'rotate-180': isMenuExpanded(item.name)}">▼</span>
+              </div>
+              <ul 
+                v-show="!isSidebarCollapsed && isMenuExpanded(item.name)" 
+                class="ml-4 mt-1 submenu-animation"
+              >
+                <li v-for="child in item.children" :key="child.name">
+                  <router-link
+                    :to="child.link"
+                    class="flex items-center py-2 px-2 hover:bg-base-200 rounded-lg"
+                  >
+                    <span class="text-lg">{{ child.icon }}</span>
+                    <span class="ml-2">{{ child.name }}</span>
+                  </router-link>
+                </li>
+              </ul>
+            </template>
+            
+            <!-- 无子菜单的项目 -->
             <router-link
+                v-else
                 :to="item.link"
-                class="tooltip"
+                class="tooltip p-2 flex items-center hover:bg-base-200 rounded-lg"
                 :class="isSidebarCollapsed ? 'tooltip-right' : ''"
                 :data-tip="item.name"
             >
@@ -190,11 +255,10 @@ const logout = () => {
     </div>
 
     <!-- 页面内容 -->
-    <main class="pt-20 px-4 pb-16 transition-all duration-300" :class="isSidebarCollapsed ? 'ml-16' : 'ml-64'"
-          style="background-color: #c0a0b9">
+    <main class="pt-20 px-4 pb-16 transition-all duration-300 bg-base-200" :class="isSidebarCollapsed ? 'ml-16' : 'ml-64'">
       <div class="max-w-2xl mx-auto">
         <!-- 这里可以添加页面主要内容 -->
-        <div v-for="i in 50" :key="i" class="mb-4">页面内容区块 {{ i }}</div>
+        <div v-for="i in 50" :key="i" class="mb-4 p-4 bg-base-100 rounded-lg shadow">页面内容区块 {{ i }}</div>
       </div>
     </main>
 
@@ -246,5 +310,20 @@ const logout = () => {
 
 .tooltip::before {
   @apply transition-opacity delay-200;
+}
+
+.submenu-animation {
+  animation: slideDown 0.3s ease-in-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
